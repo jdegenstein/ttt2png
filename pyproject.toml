@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "TTT_pdf2png"
+version = "0.1.0"
+description = "A CLI tool to convert SolidWorks PDFs to 1600x900 PNGs"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pymupdf",
+    "pillow",
+]
+
+[project.scripts]
+# Format: command_name = "module.path:function_name"
+pdf2png = "pdf2png.cli:main"
