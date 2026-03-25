@@ -5,13 +5,55 @@ import glob
 import argparse
 
 
+def check_overwrite(filepath):
+    """Prompts the user if the target file already exists."""
+    if os.path.exists(filepath):
+        while True:
+            # Changed prompt to (Y/n) to indicate Yes is default
+            ans = (
+                input(f"  -> Warning: '{filepath}' already exists. Overwrite? (Y/n): ")
+                .strip()
+                .lower()
+            )
+
+            # Added empty string '' to the 'yes' condition
+            if ans in ["y", "yes", ""]:
+                return True
+            elif ans in ["n", "no"]:
+                return False
+            else:
+                print("     Please answer 'y' or 'n'.")
+    return True
+
+
 def convert_pdf_to_png(pdf_path, output_png_path, target_width=1600, target_height=900):
     try:
         # 1. Open the PDF file
         doc = pymupdf.open(pdf_path)
 
+        # Warn if PDF has more than 1 page
+        if doc.page_count > 1:
+            print(
+                f"  -> Warning: '{pdf_path}' has {doc.page_count} pages. Only the first page will be converted."
+            )
+
         # Assuming the drawing is on the first page (index 0)
         page = doc.load_page(0)
+
+        # Warn if PDF page is not close to 16:9 aspect ratio
+        rect = page.rect
+        width = rect.width
+        height = rect.height
+
+        if height != 0:
+            aspect_ratio = width / height
+            target_ratio = target_width / target_height  # 1600 / 900 = 1.777...
+
+            # Allow a small tolerance of 0.05
+            if abs(aspect_ratio - target_ratio) > 0.05:
+                print(
+                    f"  -> Warning: Page aspect ratio is {aspect_ratio:.2f} ({width:.0f}x{height:.0f}), which is not close to 16:9 ({target_ratio:.2f})."
+                )
 
         # 2. Render the page to an image at a high resolution
         zoom = 4.0
@@ -70,16 +112,21 @@ def main():
             base_name = os.path.splitext(pdf)[0]
             output_png = f"{base_name}.png"
             print(f"Converting '{pdf}'...")
-            convert_pdf_to_png(pdf, output_png)
 
-        print("\nBatch conversion complete!")
+            # Warn if a png file is going to be overwritten
+            if not check_overwrite(output_png):
+                print(f"  -> Skipped '{pdf}'.\n")
+                continue
+
+            convert_pdf_to_png(pdf, output_png)
+            print()  # Add an empty line for readability between batch files
+
+        print("Batch conversion complete!")
         return
 
     # --- INTERACTIVE MODE ---
     print("--- SolidWorks PDF to PNG Converter ---\n")
-    print(
-        "Warning: This tool will overwrite PNGs with the same name in this directory\n"
-    )
+
     pdfs = glob.glob("*.pdf")
     default_pdf = pdfs[0] if pdfs else None
 
@@ -105,6 +152,12 @@ def main():
     output_png = png_input if png_input else default_png
 
     print(f"\nConverting '{input_pdf}' to '{output_png}'...")
+
+    # Warn if a png file is going to be overwritten
+    if not check_overwrite(output_png):
+        print("Conversion cancelled.")
+        return
+
     convert_pdf_to_png(input_pdf, output_png)
 
 
